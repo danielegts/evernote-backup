@@ -34,6 +34,7 @@ DB_SCHEMA = """CREATE TABLE IF NOT EXISTS notebooks(
                     CREATE TABLE IF NOT EXISTS notes(
                         guid TEXT PRIMARY KEY,
                         title TEXT,
+                        created TEXT,
                         notebook_guid TEXT,
                         is_active BOOLEAN,
                         raw_note BLOB
@@ -265,8 +266,8 @@ class NoteStorage(SqliteStorage):  # noqa: WPS214
 
         with self.db as con:
             con.executemany(
-                "replace into notes(guid, title, notebook_guid) values (?, ?, ?)",
-                ((n.guid, n.title, n.notebookGuid) for n in notes),
+                "replace into notes(guid, title, notebook_guid, created) values (?, ?, ?, ?)",
+                ((n.guid, n.title, n.notebookGuid, n.created) for n in notes),
             )
 
     def add_note(self, note: Note) -> None:
@@ -278,11 +279,12 @@ class NoteStorage(SqliteStorage):  # noqa: WPS214
 
         with self.db as con:
             con.execute(
-                "replace into notes(guid, title, notebook_guid, is_active, raw_note)"
-                " values (?, ?, ?, ?, ?)",
+                "replace into notes(guid, title, created, notebook_guid, is_active, raw_note)"
+                " values (?, ?, ?, ?, ?, ?)",
                 (
                     note.guid,
                     note.title,
+                    note.created,
                     note.notebookGuid,
                     note.active,
                     note_deflated,
@@ -358,12 +360,12 @@ class NoteStorage(SqliteStorage):  # noqa: WPS214
 
         with self.db as con:
             cur = con.execute(
-                "select guid, title"
+                "select guid, title, created"
                 " from notes where notebook_guid=? and is_active=1",
                 (notebook_guid,),
             )
 
-            sorted_notes = sorted(cur, key=lambda x: x["title"])
+            sorted_notes = sorted(cur, key=lambda x: x["created"])
 
             return [r["guid"] for r in sorted_notes]
 
